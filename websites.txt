@@ -12,3 +12,6 @@ https://github.com/containers/crun
 
 # crun examples
 https://github.com/containers/crun/issues/154
+
+# kubernetes
+https://computingforgeeks.com/join-new-kubernetes-worker-node-to-existing-cluster/
