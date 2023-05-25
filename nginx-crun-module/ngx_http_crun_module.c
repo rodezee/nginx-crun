@@ -31,7 +31,218 @@
 #include <ngx_http.h>
 #include <stdio.h>
 #include <string.h>
-#include "ext/libdocker/inc/docker.h"
+// #include "ext/libdocker/inc/docker.h"
+
+
+
+#ifndef DOCKER_DOCKER_H
+#define DOCKER_DOCKER_H
+
+#define DOCKER_API_VERSION v1.25
+
+#include <stdlib.h>
+#include <string.h>
+#include <curl/curl.h>
+
+#ifdef __cplusplus
+extern "C"{
+#endif
+
+struct buffer {
+  char *data;
+  size_t size;
+};
+
+struct docker {
+  CURL *curl;
+  char *version;
+  struct buffer *buffer;
+};
+
+typedef struct docker DOCKER;
+
+DOCKER *docker_init(char *version);
+int docker_destroy(DOCKER *docker_client);
+char *docker_buffer(DOCKER *docker_client);
+CURLcode docker_delete(DOCKER *docker_client, char *url);
+CURLcode docker_post(DOCKER *docker_client, char *url, char *data);
+CURLcode docker_get(DOCKER *docker_client, char *url);
+
+/**
+ * @brief Send a DELETE request to the Docker API and optionally capture the HTTP status code.
+ *
+ * @param[in] client Docker client context.
+ * @param[in] url API endpoint where the request is to be sent.
+ * @param[out] out_http_status HTTP status code returned by the API. Accepts NULL for cases when the status code is not desired.
+ * @return Curl error code (CURLE_OK on success).
+ */
+CURLcode docker_delete_with_http_status(DOCKER *docker_client, char *url, long *out_http_status);
+
+/**
+ * @brief Send a POST request to the Docker API and optionally capture the HTTP status code.
+ *
+ * @param[in] client Docker client context.
+ * @param[in] url API endpoint where the request is to be sent.
+ * @param[in] data POST request body.
+ * @param[out] out_http_status HTTP status code returned by the API. Accepts NULL for cases when the status code is not desired.
+ * @return Curl error code (CURLE_OK on success).
+ */
+CURLcode docker_post_with_http_status(DOCKER *docker_client, char *url, char *data, long *out_http_status);
+
+/**
+ * @brief Send a GET request to the Docker API and optionally capture the HTTP status code.
+ *
+ * @param[in] client Docker client context.
+ * @param[in] url API endpoint where the request is to be sent.
+ * @param[out] out_http_status HTTP status code returned by the API. Accepts NULL for cases when the status code is not desired.
+ * @return Curl error code (CURLE_OK on success).
+ */
+CURLcode docker_get_with_http_status(DOCKER *docker_client, char *url, long *out_http_status);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif //DOCKER_DOCKER_H
+
+
+
+// BEGIN LIBDOCKER
+
+void malloc_fail() {
+  fprintf(stderr, "ERROR: Failed to allocate memory. Committing seppuku.");
+  exit(-1);
+}
+
+static size_t write_function(void *data, size_t size, size_t nmemb, void *buffer) {
+  size_t realsize = size * nmemb;
+  struct buffer *mem = (struct buffer *)buffer;
+
+  mem->data = realloc(mem->data, mem->size + realsize + 1);
+  if(mem->data == NULL) {
+    malloc_fail();
+  }
+
+  memcpy(&(mem->data[mem->size]), data, realsize);
+  mem->size += realsize;
+  mem->data[mem->size] = 0;
+
+  return realsize;
+}
+
+void init_buffer(DOCKER *client) {
+  client->buffer->data = NULL;
+  client->buffer->size = 0;
+}
+
+void init_curl(DOCKER *client) {
+  curl_easy_setopt(client->curl, CURLOPT_UNIX_SOCKET_PATH, "/var/run/docker.sock");
+  curl_easy_setopt(client->curl, CURLOPT_WRITEFUNCTION, write_function);
+  curl_easy_setopt(client->curl, CURLOPT_WRITEDATA, client->buffer);
+}
+
+CURLcode perform(DOCKER *client, char *url, long *http_status) {
+  init_buffer(client);
+  curl_easy_setopt(client->curl, CURLOPT_URL, url);
+  CURLcode response = curl_easy_perform(client->curl);
+  if (http_status) {
+    curl_easy_getinfo(client->curl, CURLINFO_RESPONSE_CODE, http_status);
+  }
+  curl_easy_reset(client->curl);
+
+  return response;
+}
+
+DOCKER *docker_init(char *version) {
+  size_t version_len = strlen(version)+1;
+
+  if (version_len < 5) {
+    fprintf(stderr, "WARNING: version malformed.");
+    return NULL;
+  }
+
+  DOCKER *client = (DOCKER *) malloc(sizeof(struct docker));
+
+  client->buffer = (struct buffer *) malloc(sizeof(struct buffer));
+  init_buffer(client);
+
+  client->version = (char *) malloc(sizeof(char) * version_len);
+  if (client->version == NULL) {
+    malloc_fail();
+  }
+
+  memcpy(client->version, version, version_len);
+
+  client->curl = curl_easy_init();
+
+  if (client->curl) {
+    init_curl(client);
+    return client;
+  }
+
+  return NULL;
+}
+
+int docker_destroy(DOCKER *client) {
+  curl_easy_cleanup(client->curl);
+  free(client->buffer->data);
+  free(client->buffer);
+  free(client->version);
+  free(client);
+  client = NULL;
+
+  return 0;
+}
+
+char *docker_buffer(DOCKER *client) {
+  return client->buffer->data;
+}
+
+CURLcode docker_delete(DOCKER *client, char *url) {
+  return docker_delete_with_http_status(client, url, NULL);
+}
+
+CURLcode docker_post(DOCKER *client, char *url, char *data) {
+  return docker_post_with_http_status(client, url, data, NULL);
+}
+
+CURLcode docker_get(DOCKER *client, char *url) {
+  return docker_get_with_http_status(client, url, NULL);
+}
+
+CURLcode docker_delete_with_http_status(DOCKER *client, char *url, long *out_http_status) {
+  init_curl(client);
+
+  struct curl_slist *headers = NULL;
+  headers = curl_slist_append(headers, "Content-Type: application/json");
+  curl_easy_setopt(client->curl, CURLOPT_HTTPHEADER, headers);
+  curl_easy_setopt(client->curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+  CURLcode response = perform(client, url, out_http_status);
+  curl_slist_free_all(headers);
+
+  return response;
+}
+
+CURLcode docker_post_with_http_status(DOCKER *client, char *url, char *data, long *out_http_status) {
+  init_curl(client);
+
+  struct curl_slist *headers = NULL;
+  headers = curl_slist_append(headers, "Content-Type: application/json");
+  curl_easy_setopt(client->curl, CURLOPT_HTTPHEADER, headers);
+  curl_easy_setopt(client->curl, CURLOPT_POSTFIELDS, (void *)data);
+  CURLcode response = perform(client, url, out_http_status);
+  curl_slist_free_all(headers);
+
+  return response;
+}
+
+CURLcode docker_get_with_http_status(DOCKER *client, char *url, long *out_http_status) {
+  init_curl(client);
+  return perform(client, url, out_http_status);
+}
+
+// END LIBDOCKER
+
 
 
 #define DFUNCTION "hello crun\r\n"
@@ -116,14 +327,14 @@ static ngx_int_t ngx_http_crun_handler(ngx_http_request_t *r)
 
     if (docker)
     {
-        // printf("The following are the Docker images present in the system.\n");
-        // response = docker_get(docker, "http://v1.25/images/json");
-        // if (response == CURLE_OK)
-        // {
-        // fprintf(stderr, "%s\n", docker_buffer(docker));
-        // }
+        printf("The following are the Docker images present in the system.\n");
+        response = docker_get(docker, "http://v1.25/images/json");
+        if (response == CURLE_OK)
+        {
+        fprintf(stderr, "%s\n", docker_buffer(docker));
+        }
 
-        // docker_destroy(docker);
+        docker_destroy(docker);
         ngx_hello_crun = (u_char *) "The following are the Docker images present in the system.\n";
     } 
     else 
