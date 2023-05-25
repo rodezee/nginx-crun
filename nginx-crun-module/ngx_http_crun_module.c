@@ -116,14 +116,14 @@ static ngx_int_t ngx_http_crun_handler(ngx_http_request_t *r)
 
     if (docker)
     {
-        printf("The following are the Docker images present in the system.\n");
-        response = docker_get(docker, "http://v1.25/images/json");
-        if (response == CURLE_OK)
-        {
-        fprintf(stderr, "%s\n", docker_buffer(docker));
-        }
+        // printf("The following are the Docker images present in the system.\n");
+        // response = docker_get(docker, "http://v1.25/images/json");
+        // if (response == CURLE_OK)
+        // {
+        // fprintf(stderr, "%s\n", docker_buffer(docker));
+        // }
 
-        docker_destroy(docker);
+        // docker_destroy(docker);
         ngx_hello_crun = (u_char *) "The following are the Docker images present in the system.\n";
     } 
     else 
