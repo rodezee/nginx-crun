@@ -111,26 +111,26 @@ static ngx_int_t ngx_http_crun_handler(ngx_http_request_t *r)
         sz = (size_t) r->args.len;
     }
 
-    DOCKER *docker = docker_init("v1.25");
-    CURLcode response;
+    // DOCKER *docker = docker_init("v1.25");
+    // CURLcode response;
 
-    if (docker)
-    {
-        printf("The following are the Docker images present in the system.\n");
-        response = docker_get(docker, "http://v1.25/images/json");
-        if (response == CURLE_OK)
-        {
-        fprintf(stderr, "%s\n", docker_buffer(docker));
-        }
+    // if (docker)
+    // {
+    //     printf("The following are the Docker images present in the system.\n");
+    //     response = docker_get(docker, "http://v1.25/images/json");
+    //     if (response == CURLE_OK)
+    //     {
+    //     fprintf(stderr, "%s\n", docker_buffer(docker));
+    //     }
 
-        docker_destroy(docker);
-        ngx_hello_crun = (u_char *) "The following are the Docker images present in the system.\n";
-    } 
-    else 
-    {
-        fprintf(stderr, "ERROR: Failed to get get a docker client!\n");
-        ngx_hello_crun = (u_char *) "ERROR: Failed to get get a docker client!\n";
-    }
+    //     docker_destroy(docker);
+    //     ngx_hello_crun = (u_char *) "The following are the Docker images present in the system.\n";
+    // } 
+    // else 
+    // {
+    //     fprintf(stderr, "ERROR: Failed to get get a docker client!\n");
+    //     ngx_hello_crun = (u_char *) "ERROR: Failed to get get a docker client!\n";
+    // }
 
     r->headers_out.content_type.len = strlen("text/html");
     r->headers_out.content_type.data = (u_char *) "text/html";
