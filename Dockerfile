@@ -91,7 +91,7 @@ RUN wget https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
 
 WORKDIR /root/nginx-${NGINX_VERSION}
 
-RUN apk add --no-cache --virtual .compile build-base pcre2-dev zlib-dev util-linux-dev gd-dev libxml2-dev openssl-dev openssl curl
+RUN apk add --no-cache --virtual .compile build-base pcre2-dev zlib-dev util-linux-dev gd-dev libxml2-dev openssl-dev openssl curl-dev
 
 # CUSTOM MODULE PART
 ARG NGX_CUSTOM_MODULE_NAME=crun
@@ -115,9 +115,9 @@ RUN cat /etc/nginx/conf.d/${NGX_MOD_DIRNAME}.conf
 ADD ${NGX_MOD_DIRNAME} /root/${NGX_MOD_DIRNAME}
 
 # do configure only on new module
-#RUN ./configure --with-compat --add-dynamic-module=../${NGX_MOD_DIRNAME}
+RUN ./configure --with-compat --add-dynamic-module=../${NGX_MOD_DIRNAME}
 # || skip configure and use configuration from already build image
 #COPY --from=rodezee/nginx-dev:0.0.1 /root/nginx-${NGINX_VERSION} /root/nginx-${NGINX_VERSION}
 
-#RUN make modules && \
-#    cp ./objs/${NGX_MOD_FILENAME}.so /etc/nginx/modules/
+RUN make modules && \
+    cp ./objs/${NGX_MOD_FILENAME}.so /etc/nginx/modules/
