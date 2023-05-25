@@ -91,7 +91,7 @@ RUN wget https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
 
 WORKDIR /root/nginx-${NGINX_VERSION}
 
-RUN apk add --no-cache --virtual .compile build-base pcre2-dev zlib-dev util-linux-dev gd-dev libxml2-dev openssl-dev openssl
+RUN apk add --no-cache --virtual .compile build-base pcre2-dev zlib-dev util-linux-dev gd-dev libxml2-dev openssl-dev openssl curl
 
 # CUSTOM MODULE PART
 ARG NGX_CUSTOM_MODULE_NAME=crun
