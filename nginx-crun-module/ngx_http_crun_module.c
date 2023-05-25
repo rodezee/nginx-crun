@@ -31,7 +31,7 @@
 #include <ngx_http.h>
 #include <stdio.h>
 #include <string.h>
-#include "ext/libdocker/inc/docker.h"
+// #include "ext/libdocker/inc/docker.h"
 
 
 #define DFUNCTION "hello crun\r\n"
